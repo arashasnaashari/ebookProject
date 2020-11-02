@@ -13,6 +13,7 @@ type User {
     _id : ID!,
     username: String!,
     password:String!,
+    email:String!,
     posts:[Post]!,
 }
 type Post {
@@ -22,11 +23,17 @@ type Post {
     creator:User!,
     date:String!,
 }
+type AuthData {
+    userId : ID!,
+    token:String!,
+    tokenExpire:Int!
 
+}
 
 input UserInput {
     username: String!,
     password:String!,
+    email:String!,
 }
 input PostInput {
     title: String!,
@@ -37,6 +44,7 @@ input PostInput {
 type rootQuery {
     users:[User!]!
     posts:[Post!]!
+    login(email:String!,password:String!):AuthData
 }
 type rootMutation {
     createPost(postInput:PostInput):Post

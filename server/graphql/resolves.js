@@ -1,6 +1,7 @@
 const User = require("../models/userAuthInfo");
 const Post = require("../models/post");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const posts = async (postsIds) => {
   try {
@@ -51,7 +52,7 @@ module.exports = {
   createUser: async (args) => {
     try {
       const existingUser = await User.findOne({
-        username: args.userInput.username,
+        email: args.userInput.email,
       });
       if (existingUser) {
         throw new Error("User exists already.");
@@ -59,6 +60,7 @@ module.exports = {
       const hashedPassword = await bcrypt.hash(args.userInput.password, 12);
 
       const user = new User({
+        email: args.userInput.email,
         username: args.userInput.username,
         password: hashedPassword,
       });
@@ -70,11 +72,15 @@ module.exports = {
       throw error;
     }
   },
-  createPost: async (args) => {
+  createPost: async (args, req) => {
+    if (!req.isAuth) {
+      throw new Error("Unauthenticate");
+    }
+
     const post = new Post({
       title: args.postInput.title,
       body: args.postInput.body,
-      creator: "5f9ee7c7e690053798646f16",
+      creator: req.userId,
       date: new Date(args.postInput.date),
     });
     let createdPost;
@@ -86,7 +92,7 @@ module.exports = {
         date: new Date(post._doc.date).toISOString(),
         creator: user.bind(this, result._doc.creator),
       };
-      const creator = await User.findById("5f9ee7c7e690053798646f16");
+      const creator = await User.findById(req.userId);
       if (!creator) {
         throw new Error("User not found.");
       }
@@ -98,6 +104,29 @@ module.exports = {
       console.log(error);
       throw error;
     }
+  },
+
+  login: async ({ email, password }) => {
+    const Ouser = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User doesnt exist");
+    }
+    const isEqual = await bcrypt.compare(password, Ouser.password);
+    if (!isEqual) {
+      throw new Error("Password is not correct");
+    }
+    const token = jwt.sign(
+      { userId: Ouser.id, email: Ouser.email },
+      "somSuperKey",
+      {
+        expiresIn: "1h",
+      }
+    );
+    return {
+      userId: Ouser.id,
+      token: token,
+      tokenExpire: 1,
+    };
   },
 };
 
